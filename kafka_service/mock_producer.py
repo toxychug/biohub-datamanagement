@@ -37,5 +37,10 @@ async def simulate_kafka_event(record: dict):
             "version": audit_entry.version,
             "timestamp": audit_entry.timestamp.isoformat()
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"Error in mock producer:\n{error_msg}")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")

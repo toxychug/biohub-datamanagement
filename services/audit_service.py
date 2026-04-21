@@ -7,7 +7,7 @@ from deepdiff import DeepDiff
 
 async def compute_field_changes(current: dict, previous: Optional[dict]) -> List[FieldChange]:
     """Compute the differences between two record versions."""
-    if not previous:
+    if previous is None or len(previous) == 0:
         return []
 
     try:
@@ -17,15 +17,18 @@ async def compute_field_changes(current: dict, previous: Optional[dict]) -> List
 
     changes = []
 
-    for key, value in diff.get("values_changed", {}).items():
-        campo = key.replace("root['", "").replace("']", "").replace("']['", ".")
-        old_val = value.get("old_value")
-        new_val = value.get("new_value")
-        changes.append(FieldChange(campo=campo, valor_anterior=old_val, valor_nuevo=new_val))
+    try:
+        for key, value in diff.get("values_changed", {}).items():
+            campo = key.replace("root['", "").replace("']", "").replace("']['", ".")
+            old_val = value.get("old_value")
+            new_val = value.get("new_value")
+            changes.append(FieldChange(campo=campo, valor_anterior=old_val, valor_nuevo=new_val))
 
-    for key in diff.get("dictionary_item_added", []):
-        campo = key.replace("root['", "").replace("']", "").replace("']['", ".")
-        changes.append(FieldChange(campo=campo, valor_anterior=None, valor_nuevo=current.get(campo)))
+        for key in diff.get("dictionary_item_added", []):
+            campo = key.replace("root['", "").replace("']", "").replace("']['", ".")
+            changes.append(FieldChange(campo=campo, valor_anterior=None, valor_nuevo=current.get(campo)))
+    except Exception:
+        pass
 
     return changes
 
@@ -41,53 +44,75 @@ async def create_audit_entry(
 ) -> AuditEntry:
     """Create an immutable audit entry for a biological record change."""
 
-    audit_col = get_audit_collection()
+    try:
+        audit_col = get_audit_collection()
 
-    id_registro = record.get("identificacion_basica", {}).get("id_registro", "unknown")
+        id_registro = record.get("identificacion_basica", {}).get("id_registro", "unknown")
+        if not id_registro or id_registro == "unknown":
+            raise ValueError("id_registro is required in identificacion_basica")
 
-    # Get current version number
-    last_version = await audit_col.find_one(
-        {"id_registro": id_registro},
-        sort=[("version", -1)]
-    )
-    version = (last_version["version"] + 1) if last_version else 1
+        # Get current version number
+        last_version = await audit_col.find_one(
+            {"id_registro": id_registro},
+            sort=[("version", -1)]
+        )
+        version = (last_version["version"] + 1) if last_version is not None else 1
 
-    # Compute field changes
-    campos_modificados = await compute_field_changes(record, previous)
+        # Compute field changes
+        campos_modificados = await compute_field_changes(record, previous)
 
-    # Create audit entry
-    audit_entry = AuditEntry(
-        id_registro=id_registro,
-        version=version,
-        timestamp=datetime.utcnow(),
-        usuario=usuario,
-        ip_origen=ip_origen,
-        campos_modificados=campos_modificados,
-        motivo=motivo,
-        snapshot_completo=record,
-        sensibilidad=sensibilidad,
-        estado_aprobacion=estado_aprobacion
-    )
+        # Create audit entry
+        audit_entry = AuditEntry(
+            id_registro=id_registro,
+            version=version,
+            timestamp=datetime.utcnow(),
+            usuario=usuario,
+            ip_origen=ip_origen,
+            campos_modificados=campos_modificados,
+            motivo=motivo,
+            snapshot_completo=record,
+            sensibilidad=sensibilidad,
+            estado_aprobacion=estado_aprobacion
+        )
 
-    # Insert into audit collection
-    await audit_col.insert_one(audit_entry.dict())
+        # Insert into audit collection
+        audit_dict = {
+            "id_registro": audit_entry.id_registro,
+            "version": audit_entry.version,
+            "timestamp": audit_entry.timestamp.isoformat(),
+            "usuario": audit_entry.usuario,
+            "ip_origen": audit_entry.ip_origen,
+            "campos_modificados": [{"campo": c.campo, "valor_anterior": c.valor_anterior, "valor_nuevo": c.valor_nuevo} for c in audit_entry.campos_modificados],
+            "motivo": audit_entry.motivo,
+            "snapshot_completo": audit_entry.snapshot_completo,
+            "sensibilidad": audit_entry.sensibilidad.value,
+            "estado_aprobacion": audit_entry.estado_aprobacion.value
+        }
+        result = await audit_col.insert_one(audit_dict)
+        print(f"[✓] Inserted audit entry: {result.inserted_id}")
 
-    # Upsert into biological_records collection (latest snapshot)
-    records_col = get_records_collection()
-    await records_col.update_one(
-        {"id_registro": id_registro},
-        {
-            "$set": {
-                "id_registro": id_registro,
-                "version": version,
-                "timestamp": datetime.utcnow(),
-                "data": record
-            }
-        },
-        upsert=True
-    )
+        # Upsert into biological_records collection (latest snapshot)
+        records_col = get_records_collection()
+        await records_col.update_one(
+            {"id_registro": id_registro},
+            {
+                "$set": {
+                    "id_registro": id_registro,
+                    "version": version,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "data": record
+                }
+            },
+            upsert=True
+        )
+        print(f"[✓] Upserted biological record: {id_registro}")
 
-    return audit_entry
+        return audit_entry
+    except Exception as e:
+        print(f"[ERROR] create_audit_entry failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 async def get_historial(id_registro: str) -> List[AuditEntry]:

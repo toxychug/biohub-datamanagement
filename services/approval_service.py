@@ -14,7 +14,7 @@ async def get_approval_status(id_registro: str) -> Optional[AprobacionEnum]:
         sort=[("version", -1)]
     )
 
-    if latest:
+    if latest is not None:
         return AprobacionEnum(latest.get("estado_aprobacion", "PENDIENTE"))
 
     return None

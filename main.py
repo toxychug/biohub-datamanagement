@@ -52,17 +52,22 @@ if settings.env == "development":
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    from database.connection import get_database
-    from cache.cache import _cache_client, _use_redis
-
     try:
+        from database.connection import get_database
         db = get_database()
         await db.command("ping")
         db_status = "connected"
     except Exception as e:
-        db_status = f"error: {e}"
+        db_status = f"error"
 
-    cache_type = "redis" if _use_redis else "memory"
+    try:
+        from cache.cache import _cache_client, _use_redis
+        if _use_redis is True:
+            cache_type = "redis"
+        else:
+            cache_type = "memory"
+    except Exception:
+        cache_type = "unknown"
 
     return {
         "status": "ok",

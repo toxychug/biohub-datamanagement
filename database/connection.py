@@ -16,13 +16,13 @@ async def connect_to_mongo():
 
 async def close_mongo():
     global _client
-    if _client:
+    if _client is not None:
         _client.close()
         print("[✓] MongoDB connection closed")
 
 
 def get_database() -> AsyncIOMotorDatabase:
-    if not _db:
+    if _db is None:
         raise RuntimeError("Database not connected. Call connect_to_mongo() first.")
     return _db
 

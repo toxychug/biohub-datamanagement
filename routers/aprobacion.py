@@ -14,13 +14,13 @@ async def get_approval_status_endpoint(id_registro: str) -> dict:
     # Try cache first
     cache_key = f"aprobacion:{id_registro}"
     cached = await cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
     try:
         status = await get_approval_status(id_registro)
 
-        if not status:
+        if status is None:
             raise HTTPException(status_code=404, detail="No approval status found")
 
         result = {
@@ -32,6 +32,8 @@ async def get_approval_status_endpoint(id_registro: str) -> dict:
         await cache_set(cache_key, result, ttl=300)
 
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -45,7 +47,7 @@ async def update_approval_endpoint(action: ApprovalAction) -> dict:
         records_col = get_records_collection()
         record_doc = await records_col.find_one({"id_registro": action.id_registro})
 
-        if not record_doc:
+        if record_doc is None:
             raise HTTPException(status_code=404, detail="Record not found")
 
         snapshot = record_doc.get("data", {})
@@ -64,5 +66,7 @@ async def update_approval_endpoint(action: ApprovalAction) -> dict:
             "nuevo_estado": audit_entry.estado_aprobacion.value,
             "timestamp": audit_entry.timestamp.isoformat()
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
