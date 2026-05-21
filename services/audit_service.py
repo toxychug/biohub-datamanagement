@@ -89,7 +89,7 @@ async def create_audit_entry(
             "estado_aprobacion": audit_entry.estado_aprobacion.value
         }
         result = await audit_col.insert_one(audit_dict)
-        print(f"[✓] Inserted audit entry: {result.inserted_id}")
+        print(f"[OK] Inserted audit entry: {result.inserted_id}")
 
         # Upsert into biological_records collection (latest snapshot)
         records_col = get_records_collection()
@@ -105,7 +105,7 @@ async def create_audit_entry(
             },
             upsert=True
         )
-        print(f"[✓] Upserted biological record: {id_registro}")
+        print(f"[OK] Upserted biological record: {id_registro}")
 
         return audit_entry
     except Exception as e:
@@ -123,7 +123,7 @@ async def get_historial(id_registro: str) -> List[AuditEntry]:
         {"id_registro": id_registro}
     ).sort([("version", 1)]).to_list(None)
 
-    return [AuditEntry(**entry) for entry in entries]
+    return [AuditEntry(**{k: v for k, v in entry.items() if k != "_id"}) for entry in entries]
 
 
 async def get_latest_snapshot(id_registro: str) -> Optional[dict]:
@@ -135,6 +135,20 @@ async def get_latest_snapshot(id_registro: str) -> Optional[dict]:
     if record:
         return record.get("data")
     return None
+
+
+async def get_all_records(limit: int = 20, offset: int = 0):
+    """Get all biological records (latest snapshot per record) with pagination."""
+    records_col = get_records_collection()
+
+    total = await records_col.count_documents({})
+    cursor = records_col.find({}).sort("timestamp", -1).skip(offset).limit(limit)
+    docs = await cursor.to_list(None)
+
+    from database.models import BiologicalRecordSnapshot
+    registros = [BiologicalRecordSnapshot(**{k: v for k, v in doc.items() if k != "_id"}) for doc in docs]
+
+    return total, registros
 
 
 async def get_metadatos(id_registro: str) -> Optional[dict]:

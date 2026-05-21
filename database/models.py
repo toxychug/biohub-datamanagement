@@ -64,9 +64,181 @@ class ApprovalAction(BaseModel):
     director_aprobador: str
     comentarios: Optional[str] = None
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id_registro": "REG-001",
+                "nuevo_estado": "APROBADO",
+                "director_aprobador": "director@institute.org",
+                "comentarios": "Registro validado. Coordenadas y taxonomía verificadas."
+            }
+        }
+
 
 class BiologicalRecordSnapshot(BaseModel):
     id_registro: str
     version: int
     timestamp: datetime
     data: dict
+
+
+# --- Response models for OpenAPI documentation ---
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    db: str
+    cache: str
+    kafka: str
+    environment: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "ok",
+                "service": "biohub-change-management",
+                "db": "connected",
+                "cache": "memory",
+                "kafka": "mock",
+                "environment": "development"
+            }
+        }
+
+
+class RootResponse(BaseModel):
+    service: str
+    version: str
+    docs: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "service": "BioHub Change Management & Audit",
+                "version": "0.1.0",
+                "docs": "/docs"
+            }
+        }
+
+
+class MetadatosResponse(BaseModel):
+    identificacion_basica: dict
+    informacion_registro: dict
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "identificacion_basica": {
+                    "id_registro": "REG-001",
+                    "nombre_cientifico": "Panthera onca",
+                    "nombre_comun": "Jaguar",
+                    "taxonomia": {
+                        "reino": "Animalia", "filo": "Chordata", "clase": "Mammalia",
+                        "orden": "Carnivora", "familia": "Felidae",
+                        "genero": "Panthera", "especie": "P. onca"
+                    },
+                    "estado_taxonomico": "Aceptado",
+                    "autoridad_taxonomica": "Linnaeus, 1758",
+                    "fecha_clasificacion": "2026-01-15"
+                },
+                "informacion_registro": {
+                    "investigador": "researcher@institute.org",
+                    "equipo_expedicion": "Equipo Amazonia Norte",
+                    "institucion": "Universidad Nacional de Colombia",
+                    "id_expedicion": "EXP-2026-001",
+                    "fecha_registro": "2026-04-19",
+                    "estado_registro": "ACTIVO"
+                }
+            }
+        }
+
+
+class SensibilidadResponse(BaseModel):
+    id_registro: str
+    sensibilidad: SensibilidadEnum
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id_registro": "REG-001",
+                "sensibilidad": "RESTRICTED"
+            }
+        }
+
+
+class AprobacionResponse(BaseModel):
+    id_registro: str
+    estado_aprobacion: AprobacionEnum
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id_registro": "REG-001",
+                "estado_aprobacion": "PENDIENTE"
+            }
+        }
+
+
+class AprobacionUpdateResponse(BaseModel):
+    status: str
+    id_registro: str
+    version: int
+    nuevo_estado: str
+    timestamp: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "ok",
+                "id_registro": "REG-001",
+                "version": 2,
+                "nuevo_estado": "APROBADO",
+                "timestamp": "2026-04-19T10:30:00"
+            }
+        }
+
+
+class SimulateResponse(BaseModel):
+    status: str
+    id_registro: str
+    version: int
+    timestamp: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "ok",
+                "id_registro": "REG-001",
+                "version": 1,
+                "timestamp": "2026-04-19T10:30:00"
+            }
+        }
+
+
+class RegistrosListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    registros: List[BiologicalRecordSnapshot]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total": 1,
+                "limit": 20,
+                "offset": 0,
+                "registros": [
+                    {
+                        "id_registro": "REG-001",
+                        "version": 2,
+                        "timestamp": "2026-04-19T10:30:00",
+                        "data": {
+                            "identificacion_basica": {
+                                "id_registro": "REG-001",
+                                "nombre_cientifico": "Panthera onca",
+                                "nombre_comun": "Jaguar"
+                            }
+                        }
+                    }
+                ]
+            }
+        }

@@ -29,7 +29,7 @@ class BiohubKafkaConsumer:
             )
             await self.consumer.start()
             self.running = True
-            print(f"[✓] Kafka consumer started on topic: {settings.kafka_topic}")
+            print(f"[OK] Kafka consumer started on topic: {settings.kafka_topic}")
 
             # Start consuming in background
             self.task = asyncio.create_task(self._consume_messages())
@@ -53,11 +53,11 @@ class BiohubKafkaConsumer:
             await create_audit_entry(
                 record=record,
                 usuario=record.get("informacion_registro", {}).get("investigador", "unknown"),
-                motivo=record.get("trazabilidad", {}).get("historial_cambios", [{}])[0].get("motivo", ""),
+                motivo=(record.get("trazabilidad", {}).get("historial_cambios") or [{}])[0].get("motivo", ""),
                 sensibilidad=sensibilidad,
                 estado_aprobacion=AprobacionEnum.PENDIENTE
             )
-            print(f"[✓] Processed record: {record.get('identificacion_basica', {}).get('id_registro', 'unknown')}")
+            print(f"[OK] Processed record: {record.get('identificacion_basica', {}).get('id_registro', 'unknown')}")
         except Exception as e:
             print(f"[!] Error processing message: {e}")
 
@@ -68,7 +68,7 @@ class BiohubKafkaConsumer:
             if self.task:
                 self.task.cancel()
             await self.consumer.stop()
-            print("[✓] Kafka consumer stopped")
+            print("[OK] Kafka consumer stopped")
 
 
 _kafka_consumer: BiohubKafkaConsumer = None

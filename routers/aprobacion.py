@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException
-from database.models import ApprovalAction, AprobacionEnum
+from fastapi import APIRouter, HTTPException, Path
+from database.models import ApprovalAction, AprobacionEnum, AprobacionResponse, AprobacionUpdateResponse
 from services.approval_service import get_approval_status, update_approval
 from database.connection import get_records_collection
 from cache.cache import cache_get, cache_set, cache_delete
@@ -7,9 +7,19 @@ from cache.cache import cache_get, cache_set, cache_delete
 router = APIRouter(prefix="/aprobacion", tags=["aprobacion"])
 
 
-@router.get("/{id_registro}")
-async def get_approval_status_endpoint(id_registro: str) -> dict:
-    """Get the current approval status of a biological record."""
+@router.get(
+    "/{id_registro}",
+    response_model=AprobacionResponse,
+    summary="Obtener estado de aprobación de un registro biológico",
+    responses={
+        404: {"description": "No se encontró estado de aprobación para el ID dado"},
+        500: {"description": "Error interno del servidor"},
+    },
+)
+async def get_approval_status_endpoint(
+    id_registro: str = Path(..., description="Identificador único del registro biológico", example="REG-001")
+) -> AprobacionResponse:
+    """Retorna el estado actual del flujo de aprobación científica: PENDIENTE, EN_REVISION, APROBADO o RECHAZADO."""
 
     # Try cache first
     cache_key = f"aprobacion:{id_registro}"
@@ -38,9 +48,17 @@ async def get_approval_status_endpoint(id_registro: str) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/actualizar")
-async def update_approval_endpoint(action: ApprovalAction) -> dict:
-    """Update the approval status of a biological record."""
+@router.post(
+    "/actualizar",
+    response_model=AprobacionUpdateResponse,
+    summary="Actualizar estado de aprobación de un registro biológico",
+    responses={
+        404: {"description": "Registro no encontrado"},
+        400: {"description": "Acción de aprobación inválida"},
+    },
+)
+async def update_approval_endpoint(action: ApprovalAction) -> AprobacionUpdateResponse:
+    """Crea una nueva entrada de auditoría inmutable reflejando el cambio de estado de aprobación científica."""
 
     try:
         # Get current record snapshot
