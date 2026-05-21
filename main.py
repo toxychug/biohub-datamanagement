@@ -13,23 +13,23 @@ import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     print("[*] Starting BioHub Change Management & Audit Service...")
 
     await connect_to_mongo()
     await init_cache()
 
-    # Start Kafka consumer
-    kafka_consumer = await get_kafka_consumer()
-    await kafka_consumer.start()
+    kafka_consumer = None
+    if not settings.use_mock_kafka:
+        kafka_consumer = await get_kafka_consumer()
+        await kafka_consumer.start()
 
     print("[OK] Service started successfully")
 
     yield
 
-    # Shutdown
     print("[*] Shutting down service...")
-    await kafka_consumer.stop()
+    if kafka_consumer:
+        await kafka_consumer.stop()
     await close_cache()
     await close_mongo()
     print("[OK] Service shutdown complete")
