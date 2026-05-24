@@ -16,7 +16,7 @@ async def init_cache():
             _cache_client = redis.from_url(settings.redis_url, decode_responses=True)
             _cache_client.ping()
             _use_redis = True
-            print("[✓] Connected to Redis cache")
+            print("[OK] Connected to Redis cache")
         except Exception as e:
             print(f"[!] Redis connection failed ({e}), using in-memory cache")
             _cache_client = {}
@@ -24,7 +24,7 @@ async def init_cache():
     else:
         _cache_client = {}
         _use_redis = False
-        print("[✓] Using in-memory cache")
+        print("[OK] Using in-memory cache")
 
 
 async def cache_get(key: str) -> Optional[Any]:
@@ -58,6 +58,6 @@ async def close_cache():
     global _cache_client, _use_redis
     if _use_redis and _cache_client:
         _cache_client.close()
-        print("[✓] Redis cache closed")
+        print("[OK] Redis cache closed")
     _cache_client = None
     _use_redis = False

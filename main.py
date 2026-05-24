@@ -6,32 +6,33 @@ from kafka_service.consumer import get_kafka_consumer
 from kafka_service.mock_producer import router as mock_producer_router
 from routers.auditoria import router as auditoria_router
 from routers.aprobacion import router as aprobacion_router
+from database.models import HealthResponse, RootResponse
 from config import settings
 import asyncio
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     print("[*] Starting BioHub Change Management & Audit Service...")
 
     await connect_to_mongo()
     await init_cache()
 
-    # Start Kafka consumer
-    kafka_consumer = await get_kafka_consumer()
-    await kafka_consumer.start()
+    kafka_consumer = None
+    if not settings.use_mock_kafka:
+        kafka_consumer = await get_kafka_consumer()
+        await kafka_consumer.start()
 
-    print("[✓] Service started successfully")
+    print("[OK] Service started successfully")
 
     yield
 
-    # Shutdown
     print("[*] Shutting down service...")
-    await kafka_consumer.stop()
+    if kafka_consumer:
+        await kafka_consumer.stop()
     await close_cache()
     await close_mongo()
-    print("[✓] Service shutdown complete")
+    print("[OK] Service shutdown complete")
 
 
 app = FastAPI(
@@ -49,9 +50,14 @@ if settings.env == "development":
     app.include_router(mock_producer_router)
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Estado del servicio",
+    tags=["monitoring"],
+)
+async def health_check() -> HealthResponse:
+    """Retorna el estado de conexión de MongoDB, caché (Redis/memoria), Kafka y el entorno actual."""
     try:
         from database.connection import get_database
         db = get_database()
@@ -79,9 +85,14 @@ async def health_check():
     }
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
+@app.get(
+    "/",
+    response_model=RootResponse,
+    summary="Raíz del servicio",
+    tags=["monitoring"],
+)
+async def root() -> RootResponse:
+    """Retorna el nombre del servicio, versión y enlace a la documentación interactiva."""
     return {
         "service": "BioHub Change Management & Audit",
         "version": "0.1.0",

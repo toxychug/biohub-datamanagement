@@ -64,6 +64,16 @@ class ApprovalAction(BaseModel):
     director_aprobador: str
     comentarios: Optional[str] = None
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id_registro": "REG-001",
+                "nuevo_estado": "APROBADO",
+                "director_aprobador": "director@institute.org",
+                "comentarios": "Registro validado. Coordenadas y taxonomía verificadas."
+            }
+        }
+
 
 class BiologicalRecordSnapshot(BaseModel):
     id_registro: str
@@ -216,3 +226,25 @@ class AuditListResponse(BaseModel):
     limit: int
     offset: int
     entradas: List[AuditEntry]
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total": 1,
+                "limit": 20,
+                "offset": 0,
+                "registros": [
+                    {
+                        "id_registro": "REG-001",
+                        "version": 2,
+                        "timestamp": "2026-04-19T10:30:00",
+                        "data": {
+                            "identificacion_basica": {
+                                "id_registro": "REG-001",
+                                "nombre_cientifico": "Panthera onca",
+                                "nombre_comun": "Jaguar"
+                            }
+                        }
+                    }
+                ]
+            }
+        }

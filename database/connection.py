@@ -11,14 +11,14 @@ async def connect_to_mongo():
     _client = AsyncIOMotorClient(settings.mongodb_uri)
     _db = _client[settings.mongodb_db_name]
     await _client.admin.command("ping")
-    print(f"[✓] Connected to MongoDB: {settings.mongodb_db_name}")
+    print(f"[OK] Connected to MongoDB: {settings.mongodb_db_name}", flush=True)
 
 
 async def close_mongo():
     global _client
     if _client is not None:
         _client.close()
-        print("[✓] MongoDB connection closed")
+        print("[OK] MongoDB connection closed")
 
 
 def get_database() -> AsyncIOMotorDatabase:
