@@ -1,5 +1,8 @@
 from fastapi import APIRouter, HTTPException, Path, Query
 from typing import List, Optional
+from services.audit_service import get_historial, get_metadatos, get_all_records, get_all_audit_entries
+from services.sensitivity_service import classify_sensitivity
+from database.models import AuditEntry, SensibilidadEnum, MetadatosResponse, SensibilidadResponse, RegistrosListResponse, AuditListResponse
 from services.audit_service import get_historial, get_metadatos, get_all_records
 from services.sensitivity_service import classify_sensitivity
 from database.models import AuditEntry, SensibilidadEnum, MetadatosResponse, SensibilidadResponse, RegistrosListResponse
@@ -24,6 +27,26 @@ async def get_all_registros_endpoint(
     try:
         total, registros = await get_all_records(limit=limit, offset=offset)
         return RegistrosListResponse(total=total, limit=limit, offset=offset, registros=registros)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/entradas",
+    response_model=AuditListResponse,
+    summary="Obtener todos los documentos de auditoría",
+    responses={
+        500: {"description": "Error interno del servidor"},
+    },
+)
+async def get_all_audit_entries_endpoint(
+    limit: int = Query(20, ge=1, le=100, description="Número máximo de entradas a retornar"),
+    offset: int = Query(0, ge=0, description="Número de entradas a omitir (paginación)"),
+) -> AuditListResponse:
+    """Retorna todos los documentos de auditoría de todos los registros, ordenados por fecha descendente. Soporta paginación con `limit` y `offset`."""
+    try:
+        total, entradas = await get_all_audit_entries(limit=limit, offset=offset)
+        return AuditListResponse(total=total, limit=limit, offset=offset, entradas=entradas)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

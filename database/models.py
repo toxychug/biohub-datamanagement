@@ -220,6 +220,12 @@ class RegistrosListResponse(BaseModel):
     offset: int
     registros: List[BiologicalRecordSnapshot]
 
+
+class AuditListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    entradas: List[AuditEntry]
     class Config:
         json_schema_extra = {
             "example": {
