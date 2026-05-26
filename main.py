@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from database.connection import connect_to_mongo, close_mongo
 from cache.cache import init_cache, close_cache
@@ -47,6 +48,8 @@ app.include_router(aprobacion_router)
 
 if settings.env == "development":
     app.include_router(mock_producer_router)
+
+app.mount("/ui", StaticFiles(directory="static", html=True), name="ui")
 
 
 @app.get("/health")

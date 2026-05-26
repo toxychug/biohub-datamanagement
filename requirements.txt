@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 aiokafka==0.10.0
 redis==5.2.0
 deepdiff==9.0.0
+aiofiles==24.1.0
