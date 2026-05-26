@@ -163,7 +163,6 @@ async def get_all_audit_entries(limit: int = 20, offset: int = 0) -> tuple[int, 
     return total, entries
 
 
-
 async def get_metadatos(id_registro: str) -> Optional[dict]:
     """Get metadata (identificacion_basica + informacion_registro) from latest snapshot."""
     snapshot = await get_latest_snapshot(id_registro)
