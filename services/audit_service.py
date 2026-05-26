@@ -151,6 +151,19 @@ async def get_all_records(limit: int = 20, offset: int = 0):
     return total, registros
 
 
+async def get_all_audit_entries(limit: int = 20, offset: int = 0) -> tuple[int, List[AuditEntry]]:
+    """Get all audit entries across all records with pagination."""
+    audit_col = get_audit_collection()
+
+    total = await audit_col.count_documents({})
+    cursor = audit_col.find({}).sort("timestamp", -1).skip(offset).limit(limit)
+    docs = await cursor.to_list(None)
+
+    entries = [AuditEntry(**{k: v for k, v in doc.items() if k != "_id"}) for doc in docs]
+    return total, entries
+
+
+
 async def get_metadatos(id_registro: str) -> Optional[dict]:
     """Get metadata (identificacion_basica + informacion_registro) from latest snapshot."""
     snapshot = await get_latest_snapshot(id_registro)

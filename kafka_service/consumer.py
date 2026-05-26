@@ -50,10 +50,13 @@ class BiohubKafkaConsumer:
         try:
             sensibilidad = classify_sensitivity(record)
 
+            historial = record.get("trazabilidad", {}).get("historial_cambios", [])
+            motivo = historial[0].get("motivo", "") if historial else ""
+
             await create_audit_entry(
                 record=record,
                 usuario=record.get("informacion_registro", {}).get("investigador", "unknown"),
-                motivo=(record.get("trazabilidad", {}).get("historial_cambios") or [{}])[0].get("motivo", ""),
+                motivo=motivo,
                 sensibilidad=sensibilidad,
                 estado_aprobacion=AprobacionEnum.PENDIENTE
             )

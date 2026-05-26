@@ -242,3 +242,10 @@ class RegistrosListResponse(BaseModel):
                 ]
             }
         }
+
+
+class AuditListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    entradas: List[AuditEntry]
