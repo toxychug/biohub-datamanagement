@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioHub — Gestión de Registros</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #F0F2F5;
+      --surface: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #1A202C;
+      --muted: #718096;
+      --brand: #2D8F4E;
+      --brand-light: #E8F5ED;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .header-brand .separator {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Layout ── */
+    .main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 32px;
+    }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 20px 24px;
+      border-left: 3px solid transparent;
+    }
+
+    .stat-card.total  { border-left-color: var(--border); }
+    .stat-card.orange { border-left-color: #ED8936; }
+    .stat-card.green  { border-left-color: var(--brand); }
+    .stat-card.red    { border-left-color: #FC8181; }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .stat-card.total  .stat-number { color: var(--text); }
+    .stat-card.orange .stat-number { color: #C05621; }
+    .stat-card.green  .stat-number { color: var(--brand); }
+    .stat-card.red    .stat-number { color: #C53030; }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Card wrapper ── */
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-input {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      width: 240px;
+      transition: border-color 0.15s;
+    }
+
+    .search-input:focus { border-color: var(--brand); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: #237a40; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7f9fc; }
+
+    tbody tr.active {
+      background: var(--brand-light);
+      border-left: 3px solid var(--brand);
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    .td-id    { font-weight: 700; color: var(--brand); font-size: 13px; }
+    .td-sci   { font-weight: 700; font-style: italic; }
+    .td-muted { color: var(--muted); font-size: 13px; }
+
+    .version-chip {
+      font-size: 11px;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .badge-pendiente    { background: #FFF7ED; color: #C05621; }
+    .badge-revision     { background: #EBF8FF; color: #2B6CB0; }
+    .badge-aprobado     { background: #F0FFF4; color: #276749; }
+    .badge-rechazado    { background: #FFF5F5; color: #C53030; }
+    .badge-public       { background: #F0FFF4; color: #276749; }
+    .badge-restricted   { background: #FFF5F5; color: #C53030; }
+    .badge-confidential { background: #FAF5FF; color: #553C9A; }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pagination-info { font-size: 13px; color: var(--muted); }
+
+    .pagination-btns { display: flex; gap: 6px; }
+
+    .btn-page {
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+
+    .btn-page:hover:not(:disabled) { background: var(--bg); }
+    .btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Detail panel ── */
+    .detail-panel {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-top: 3px solid var(--brand);
+    }
+
+    .detail-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .detail-heading {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-subheading {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 28px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--brand);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-field {
+      margin-bottom: 13px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .field-value {
+      font-size: 14px;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .field-value.italic { font-style: italic; font-weight: 700; }
+
+    /* ── Campo modificado ── */
+    .campo-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+
+    .campo-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .campo-key   { font-weight: 600; margin-bottom: 3px; }
+    .campo-diff  { color: var(--muted); }
+    .campo-arrow { color: var(--brand); margin: 0 5px; }
+
+    /* ── Approval form ── */
+    .approval-form {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .form-control {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-control:focus { border-color: var(--brand); }
+
+    /* ── Empty / loading ── */
+    .state-row td {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 7px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+      z-index: 200;
+      color: #fff;
+    }
+
+    .toast-success { background: var(--brand); }
+    .toast-error   { background: #C53030; }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+
+<body x-data="biohub()" x-init="init()" x-cloak>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+        <circle cx="13" cy="13" r="12" stroke="#2D8F4E" stroke-width="1.8"/>
+        <path d="M6 13c0-3 2.2-5 4.5-4C13 10 13 12 13 13s0 3 2.5 4C18 18 20.5 16 20.5 13"
+              stroke="#2D8F4E" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="6"    cy="13" r="1.6" fill="#2D8F4E"/>
+        <circle cx="20.5" cy="13" r="1.6" fill="#2D8F4E"/>
+      </svg>
+      BioHub
+      <span class="separator">/ Gestión de Registros</span>
+    </div>
+    <span class="header-meta">Grupo 2 · Change Management &amp; Audit</span>
+  </header>
+
+  <main class="main">
+
+    <!-- ── Stats ── -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-number" x-text="stats.total">—</div>
+        <div class="stat-label">Total de registros</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-number" x-text="stats.enVista">—</div>
+        <div class="stat-label">Registros en esta página</div>
+      </div>
+    </div>
+
+    <!-- ── Detail panel ── -->
+    <div class="detail-panel" x-show="selected" x-transition.opacity>
+
+      <div class="detail-top">
+        <div>
+          <div class="detail-heading">
+            Detalle del Registro
+            <span class="version-chip" x-text="'v' + (selected?.version ?? '')"></span>
+            <span x-show="detail?.aprobacion" :class="badgeAprobacion(detail?.aprobacion?.estado_aprobacion)" class="badge"
+                  x-text="detail?.aprobacion?.estado_aprobacion"></span>
+          </div>
+          <div class="detail-subheading" x-text="selected?.id_registro"></div>
+        </div>
+        <button class="btn btn-ghost" @click="closeDetail()">Cerrar</button>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div x-show="detailLoading" style="text-align:center; padding:32px; color:var(--muted);">
+        <span class="spinner"></span> Cargando detalles...
+      </div>
+
+      <div class="detail-grid" x-show="!detailLoading">
+
+        <!-- Col 1: Identificación -->
+        <div>
+          <div class="section-title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x=".75" y=".75" width="11.5" height="11.5" rx="1.75" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M3.5 4.5h6M3.5 6.5h6M3.5 8.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Identificación
+          </div>
+
+          <template x-if="detail?.metadatos">
+            <div>
+              <div class="detail-field">
+                <div class="field-label">Nombre científico</div>
+                <div class="field-value italic"
+                     x-text="detail.metadatos.identificacion_basica?.nombre_cientifico ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Nombre común</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.identificacion_basica?.nombre_comun ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Estado taxonómico</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.identificacion_basica?.estado_taxonomico ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Investigador</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.informacion_registro?.investigador ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Institución</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.informacion_registro?.institucion ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Expedición</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.informacion_registro?.id_expedicion ?? '—'"></div>
+              </div>
+              <div class="detail-field">
+                <div class="field-label">Fecha de registro</div>
+                <div class="field-value"
+                     x-text="detail.metadatos.informacion_registro?.fecha_registro ?? '—'"></div>
+              </div>
+            </div>
+          </template>
+
+          <template x-if="!detail?.metadatos">
+            <div style="color:var(--muted); font-size:13px;">Sin metadatos disponibles</div>
+          </template>
+        </div>
+
+        <!-- Col 2: Sensibilidad -->
+        <div>
+          <div class="section-title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M6.5 1L1 3.5V7c0 3 2.3 5.8 5.5 6.5C9.7 12.8 12 10 12 7V3.5L6.5 1z"
+                    stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            Sensibilidad
+          </div>
+
+          <div class="detail-field">
+            <div class="field-label">Clasificación</div>
+            <template x-if="detail?.sensibilidad">
+              <span :class="badgeSens(detail.sensibilidad.sensibilidad)" class="badge"
+                    x-text="detail.sensibilidad.sensibilidad"></span>
+            </template>
+            <template x-if="!detail?.sensibilidad">
+              <span style="font-size:13px; color:var(--muted);">Cargando...</span>
+            </template>
+          </div>
+
+          <div class="detail-field">
+            <div class="field-label">Última actualización</div>
+            <div class="field-value" x-text="formatDate(selected?.timestamp)"></div>
+          </div>
+
+          <div class="detail-field">
+            <div class="field-label">Versión actual</div>
+            <div class="field-value" x-text="selected?.version"></div>
+          </div>
+        </div>
+
+        <!-- Col 3: Aprobación -->
+        <div>
+          <div class="section-title">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M2 6.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Aprobación
+          </div>
+
+          <div class="detail-field">
+            <div class="field-label">Estado actual</div>
+            <template x-if="detail?.aprobacion">
+              <span :class="badgeAprobacion(detail.aprobacion.estado_aprobacion)" class="badge"
+                    x-text="detail.aprobacion.estado_aprobacion"></span>
+            </template>
+            <template x-if="!detail?.aprobacion">
+              <span style="font-size:13px; color:var(--muted);">Cargando...</span>
+            </template>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">ID Registro</div>
+            <div class="field-value" x-text="selected?.id_registro ?? '—'"></div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">Versión</div>
+            <div class="field-value" x-text="selected?.version"></div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">Timestamp</div>
+            <div class="field-value" x-text="formatDate(selected?.timestamp)"></div>
+          </div>
+
+          <!-- Approval action form -->
+          <template x-if="detail?.aprobacion && nextStates(detail.aprobacion.estado_aprobacion).length > 0">
+            <form class="approval-form" @submit.prevent="submitApproval()">
+              <div class="form-group">
+                <label class="form-label">Nuevo estado</label>
+                <select class="form-control" x-model="form.nuevo_estado">
+                  <option value="">Seleccionar...</option>
+                  <template x-for="s in nextStates(detail.aprobacion.estado_aprobacion)" :key="s">
+                    <option :value="s" x-text="s"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Director aprobador</label>
+                <input class="form-control" type="text" placeholder="nombre.apellido"
+                       x-model="form.director" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Comentarios (opcional)</label>
+                <input class="form-control" type="text" placeholder="Observaciones..."
+                       x-model="form.comentarios">
+              </div>
+              <button type="submit" class="btn btn-primary"
+                      :disabled="!form.nuevo_estado || !form.director || approvalLoading"
+                      style="width:100%; justify-content:center; margin-top:4px;">
+                <span x-show="!approvalLoading">Actualizar estado</span>
+                <span x-show="approvalLoading"><span class="spinner"></span>Guardando...</span>
+              </button>
+            </form>
+          </template>
+
+          <template x-if="detail?.aprobacion && nextStates(detail.aprobacion.estado_aprobacion).length === 0">
+            <p style="margin-top:14px; font-size:13px; color:var(--muted);">
+              Estado terminal — no hay transiciones disponibles.
+            </p>
+          </template>
+        </div>
+
+      </div><!-- /detail-grid -->
+    </div><!-- /detail-panel -->
+
+    <!-- ── Table ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Registros Biológicos</div>
+        <div class="controls">
+          <input class="search-input" type="text" placeholder="Buscar por ID o nombre científico..."
+                 x-model="search">
+          <button class="btn btn-primary" @click="loadEntries()">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M1 6.5A5.5 5.5 0 0 1 11.5 3.5M12 6.5A5.5 5.5 0 0 1 1.5 9.5"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M10 1l1.5 2.5-2.5.5" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID Registro</th>
+            <th>Nombre Científico</th>
+            <th>Timestamp</th>
+            <th>Versión</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="state-row" x-show="loading">
+            <td colspan="4"><span class="spinner"></span>Cargando registros...</td>
+          </tr>
+          <tr class="state-row" x-show="!loading && filteredEntries.length === 0">
+            <td colspan="4">No hay registros que mostrar.</td>
+          </tr>
+
+          <template x-for="entry in filteredEntries" :key="entry.id_registro + '-' + entry.version">
+            <tr @click="selectEntry(entry)"
+                :class="{ active: selected?.id_registro === entry.id_registro && selected?.version === entry.version }">
+              <td class="td-id"    x-text="entry.id_registro"></td>
+              <td class="td-sci"   x-text="getNombreCientifico(entry)"></td>
+              <td class="td-muted" x-text="formatDate(entry.timestamp)"></td>
+              <td><span class="version-chip" x-text="'v' + entry.version"></span></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <div class="pagination-info">
+          Mostrando
+          <strong x-text="totalEntries === 0 ? 0 : offset + 1"></strong>–<strong
+            x-text="Math.min(offset + limit, totalEntries)"></strong>
+          de <strong x-text="totalEntries"></strong> registros
+        </div>
+        <div class="pagination-btns">
+          <button class="btn-page" @click="prevPage()" :disabled="offset === 0">← Anterior</button>
+          <button class="btn-page" @click="nextPage()" :disabled="offset + limit >= totalEntries">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Toast ── -->
+  <div class="toast" :class="'toast-' + toast.type" x-show="toast.visible"
+       x-transition.opacity x-text="toast.message"></div>
+
+  <script>
+    function biohub() {
+      return {
+        entries: [],
+        totalEntries: 0,
+        limit: 20,
+        offset: 0,
+        loading: false,
+        search: '',
+
+        selected: null,
+        detail: null,
+        detailLoading: false,
+
+        approvalLoading: false,
+        form: { nuevo_estado: '', director: '', comentarios: '' },
+
+        stats: { total: '—', enVista: '—' },
+        toast: { visible: false, message: '', type: 'success' },
+
+        async init() {
+          await this.loadEntries();
+        },
+
+        // ── Data loading ────────────────────────────────────────────
+        async loadEntries() {
+          this.loading = true;
+          try {
+            const res = await fetch(`/auditoria/registros?limit=${this.limit}&offset=${this.offset}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this.entries = data.registros;
+            this.totalEntries = data.total;
+            this.computeStats();
+          } catch (e) {
+            this.showToast('Error al cargar registros: ' + e.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        computeStats() {
+          this.stats.total  = this.totalEntries;
+          this.stats.enVista = this.entries.length;
+        },
+
+        // ── Filtering ───────────────────────────────────────────────
+        get filteredEntries() {
+          if (!this.search.trim()) return this.entries;
+          const q = this.search.toLowerCase();
+          return this.entries.filter(e =>
+            e.id_registro.toLowerCase().includes(q) ||
+            this.getNombreCientifico(e).toLowerCase().includes(q)
+          );
+        },
+
+        // ── Row selection ────────────────────────────────────────────
+        async selectEntry(entry) {
+          this.selected = entry;
+          this.detail = null;
+          this.form = { nuevo_estado: '', director: '', comentarios: '' };
+          this.detailLoading = true;
+          try {
+            const [metRes, sensRes, aprobRes] = await Promise.all([
+              fetch(`/auditoria/metadatos/${entry.id_registro}`),
+              fetch(`/auditoria/sensibilidad/${entry.id_registro}`),
+              fetch(`/aprobacion/${entry.id_registro}`)
+            ]);
+            this.detail = {
+              metadatos:   metRes.ok   ? await metRes.json()   : null,
+              sensibilidad: sensRes.ok ? await sensRes.json()  : null,
+              aprobacion:  aprobRes.ok ? await aprobRes.json() : null
+            };
+          } catch {
+            this.detail = { metadatos: null, sensibilidad: null, aprobacion: null };
+          } finally {
+            this.detailLoading = false;
+          }
+          this.$nextTick(() => {
+            document.querySelector('.detail-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+        },
+
+        closeDetail() {
+          this.selected = null;
+          this.detail = null;
+        },
+
+        // ── Approval ─────────────────────────────────────────────────
+        async submitApproval() {
+          if (!this.form.nuevo_estado || !this.form.director) return;
+          this.approvalLoading = true;
+          try {
+            const res = await fetch('/aprobacion/actualizar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id_registro:       this.selected.id_registro,
+                nuevo_estado:      this.form.nuevo_estado,
+                director_aprobador: this.form.director,
+                comentarios:       this.form.comentarios || null
+              })
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.detail ?? `HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            this.showToast(`Estado actualizado a ${data.nuevo_estado}`, 'success');
+            this.detail.aprobacion.estado_aprobacion = data.nuevo_estado;
+            this.form = { nuevo_estado: '', director: '', comentarios: '' };
+            await this.loadEntries();
+          } catch (e) {
+            this.showToast('Error: ' + e.message, 'error');
+          } finally {
+            this.approvalLoading = false;
+          }
+        },
+
+        // ── State machine ─────────────────────────────────────────────
+        nextStates(current) {
+          return { PENDIENTE: ['EN_REVISION'], EN_REVISION: ['APROBADO', 'RECHAZADO'] }[current] ?? [];
+        },
+
+        // ── Helpers ───────────────────────────────────────────────────
+        getNombreCientifico(entry) {
+          const d = entry.data ?? {};
+          return d.nombre_cientifico
+            ?? d.identificacion_basica?.nombre_cientifico
+            ?? d.snapshot_completo?.nombre_cientifico
+            ?? '—';
+        },
+
+        formatDate(ts) {
+          if (!ts) return '—';
+          return new Date(ts).toLocaleString('es-CO', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+        },
+
+        badgeSens(s) {
+          return {
+            'badge-public':       s === 'PUBLIC',
+            'badge-restricted':   s === 'RESTRICTED',
+            'badge-confidential': s === 'CONFIDENTIAL'
+          };
+        },
+
+        badgeAprobacion(s) {
+          return {
+            'badge-pendiente': s === 'PENDIENTE',
+            'badge-revision':  s === 'EN_REVISION',
+            'badge-aprobado':  s === 'APROBADO',
+            'badge-rechazado': s === 'RECHAZADO'
+          };
+        },
+
+        // ── Pagination ───────────────────────────────────────────────
+        nextPage() {
+          if (this.offset + this.limit < this.totalEntries) {
+            this.offset += this.limit;
+            this.loadEntries();
+          }
+        },
+
+        prevPage() {
+          if (this.offset > 0) {
+            this.offset = Math.max(0, this.offset - this.limit);
+            this.loadEntries();
+          }
+        },
+
+        // ── Toast ────────────────────────────────────────────────────
+        showToast(message, type = 'success') {
+          this.toast = { visible: true, message, type };
+          setTimeout(() => { this.toast.visible = false; }, 3500);
+        }
+      };
+    }
+  </script>
+</body>
+</html>
