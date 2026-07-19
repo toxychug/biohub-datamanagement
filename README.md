@@ -12,25 +12,78 @@ Change Management & Audit microservice for the BioHub biological intelligence pl
 ## Project Structure
 
 ```
-biohub-datamanager/
+biohub-datamanagement/
 ├── config.py              # Settings from .env
 ├── main.py                # FastAPI app entry point
-├── database/
-│   ├── connection.py      # Async MongoDB (Motor) client
-│   └── models.py          # Pydantic domain models
-├── services/
-│   ├── audit_service.py   # Core audit logic
-│   ├── sensitivity_service.py  # Sensitivity classification
-│   └── approval_service.py     # Approval workflow state machine
-├── routers/
-│   ├── auditoria.py       # Historial, metadatos, sensibilidad endpoints
-│   └── aprobacion.py      # Approval status and updates
-├── kafka_service/
-│   ├── consumer.py        # Async Kafka consumer (aiokafka)
-│   └── mock_producer.py   # Development simulator
-└── cache/
-    └── cache.py           # Redis or in-memory cache
+├── requirements.txt       # Python dependencies
+├── pytest.ini            # Test configuration
+├── README.md             # This file
+├── CONTRIBUTING.md       # Contribution guidelines
+├── TESTING_GUIDE.md      # Testing documentation
+├── CHANGELOG.md          # Version history
+├── GITHUB_DEPLOYMENT.md  # Deployment guide
+│
+├── docs/                 # 📚 Documentation (see docs/README.md)
+│   ├── QUICK_START.md
+│   ├── MOCK_INPUT_SPECS.md
+│   ├── ENDPOINTS_REFERENCE.md
+│   └── ...
+│
+├── scripts/              # 🔧 Utility scripts (see scripts/README.md)
+│   ├── generate_report.py
+│   ├── generate_guide.py
+│   └── ...
+│
+├── archive/              # 📦 Historical reference (see archive/README.md)
+│   ├── BIOHUB_DESIGN1.md
+│   └── ...
+│
+├── cache/                # Cache layer
+│   └── cache.py          # Redis or in-memory cache
+│
+├── database/             # Database layer
+│   ├── connection.py     # Async MongoDB (Motor) client
+│   └── models.py         # Pydantic domain models
+│
+├── services/             # Business logic
+│   ├── audit_service.py
+│   ├── sensitivity_service.py
+│   └── approval_service.py
+│
+├── routers/              # API endpoints
+│   ├── auditoria.py      # Historial, metadatos, sensibilidad
+│   └── aprobacion.py     # Approval status and updates
+│
+├── kafka_service/        # Kafka integration
+│   ├── consumer.py       # Async Kafka consumer
+│   └── mock_producer.py  # Development simulator
+│
+├── static/               # Frontend
+│   ├── index.html        # Dashboard
+│   └── mock-input.html   # Mock Kafka input form
+│
+├── tests/                # Unit tests
+│   ├── test_audit_service.py
+│   ├── test_eca01_cache.py
+│   └── test_eca02_kafka.py
+│
+├── .github/              # GitHub Actions
+│   └── workflows/        # CI/CD pipelines
+│
+├── Dockerfile            # Docker container
+├── docker-compose.yml    # Full stack with services
+└── .env.example          # Environment template
 ```
+
+## 📂 Folder Guide
+
+- **`docs/`** — Comprehensive documentation (setup, testing, API reference)
+- **`scripts/`** — One-time utility scripts (not part of core app)
+- **`archive/`** — Historical/reference documents
+- **`cache/`, `database/`, `services/`, etc.** — Core application code
+
+See [docs/README.md](docs/README.md) for documentation index.
+
 
 ## Setup
 

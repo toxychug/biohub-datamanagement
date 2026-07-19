@@ -17,6 +17,13 @@ class AprobacionEnum(str, Enum):
     RECHAZADO = "RECHAZADO"
 
 
+class TipoCambioEnum(str, Enum):
+    CREACION = "CREACION"
+    EDICION = "EDICION"
+    RECLASIFICACION = "RECLASIFICACION"
+    CAMBIO_ESTADO = "CAMBIO_ESTADO"
+
+
 class FieldChange(BaseModel):
     campo: str
     valor_anterior: Any = None
@@ -34,6 +41,7 @@ class AuditEntry(BaseModel):
     snapshot_completo: dict
     sensibilidad: SensibilidadEnum = SensibilidadEnum.PUBLIC
     estado_aprobacion: AprobacionEnum = AprobacionEnum.PENDIENTE
+    tipo_cambio: Optional[TipoCambioEnum] = None
 
     class Config:
         json_schema_extra = {
@@ -53,7 +61,8 @@ class AuditEntry(BaseModel):
                 "motivo": "Registro inicial de hallazgo",
                 "snapshot_completo": {},
                 "sensibilidad": "RESTRICTED",
-                "estado_aprobacion": "PENDIENTE"
+                "estado_aprobacion": "PENDIENTE",
+                "tipo_cambio": "CREACION"
             }
         }
 
@@ -249,3 +258,24 @@ class AuditListResponse(BaseModel):
     limit: int
     offset: int
     entradas: List[AuditEntry]
+
+
+class AuditMetadatosResponse(BaseModel):
+    id_registro: str
+    creador: str
+    fecha_creacion: datetime
+    ultima_modificacion: datetime
+    version_actual: int
+    total_versiones: int
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id_registro": "REG-001",
+                "creador": "researcher@biohub.org",
+                "fecha_creacion": "2026-01-15T08:00:00",
+                "ultima_modificacion": "2026-05-20T14:30:00",
+                "version_actual": 4,
+                "total_versiones": 4
+            }
+        }

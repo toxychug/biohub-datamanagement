@@ -1,8 +1,9 @@
 from database.connection import get_audit_collection, get_records_collection
-from database.models import AuditEntry, FieldChange, SensibilidadEnum, AprobacionEnum
+from database.models import AuditEntry, FieldChange, SensibilidadEnum, AprobacionEnum, TipoCambioEnum
 from datetime import datetime
 from typing import Optional, List, Any
 from deepdiff import DeepDiff
+from cache.cache import cache_delete
 
 
 async def compute_field_changes(current: dict, previous: Optional[dict]) -> List[FieldChange]:
@@ -40,7 +41,8 @@ async def create_audit_entry(
     ip_origen: Optional[str] = None,
     motivo: str = "",
     sensibilidad: SensibilidadEnum = SensibilidadEnum.PUBLIC,
-    estado_aprobacion: AprobacionEnum = AprobacionEnum.PENDIENTE
+    estado_aprobacion: AprobacionEnum = AprobacionEnum.PENDIENTE,
+    tipo_cambio: Optional[TipoCambioEnum] = None,
 ) -> AuditEntry:
     """Create an immutable audit entry for a biological record change."""
 
@@ -58,6 +60,10 @@ async def create_audit_entry(
         )
         version = (last_version["version"] + 1) if last_version is not None else 1
 
+        # Infer tipo_cambio when caller does not supply one explicitly
+        if tipo_cambio is None:
+            tipo_cambio = TipoCambioEnum.CREACION if version == 1 else TipoCambioEnum.EDICION
+
         # Compute field changes
         campos_modificados = await compute_field_changes(record, previous)
 
@@ -72,7 +78,8 @@ async def create_audit_entry(
             motivo=motivo,
             snapshot_completo=record,
             sensibilidad=sensibilidad,
-            estado_aprobacion=estado_aprobacion
+            estado_aprobacion=estado_aprobacion,
+            tipo_cambio=tipo_cambio,
         )
 
         # Insert into audit collection
@@ -86,10 +93,15 @@ async def create_audit_entry(
             "motivo": audit_entry.motivo,
             "snapshot_completo": audit_entry.snapshot_completo,
             "sensibilidad": audit_entry.sensibilidad.value,
-            "estado_aprobacion": audit_entry.estado_aprobacion.value
+            "estado_aprobacion": audit_entry.estado_aprobacion.value,
+            "tipo_cambio": audit_entry.tipo_cambio.value if audit_entry.tipo_cambio else None,
         }
         result = await audit_col.insert_one(audit_dict)
         print(f"[OK] Inserted audit entry: {result.inserted_id}")
+
+        # Invalidate caches that depend on this record's audit history (ECA-01)
+        await cache_delete(f"historial:{id_registro}")
+        await cache_delete(f"auditoria:{id_registro}")
 
         # Upsert into biological_records collection (latest snapshot)
         records_col = get_records_collection()
@@ -115,15 +127,30 @@ async def create_audit_entry(
         raise
 
 
-async def get_historial(id_registro: str) -> List[AuditEntry]:
-    """Get complete audit history for a biological record."""
+async def get_historial(
+    id_registro: str,
+    fecha_desde: Optional[datetime] = None,
+    fecha_hasta: Optional[datetime] = None,
+    tipo_cambio: Optional[str] = None,
+) -> List[AuditEntry]:
+    """Get audit history for a record, with optional filters (RF-09)."""
     audit_col = get_audit_collection()
 
-    entries = await audit_col.find(
-        {"id_registro": id_registro}
-    ).sort([("version", 1)]).to_list(None)
+    query: dict = {"id_registro": id_registro}
 
-    return [AuditEntry(**{k: v for k, v in entry.items() if k != "_id"}) for entry in entries]
+    if fecha_desde or fecha_hasta:
+        ts_filter: dict = {}
+        if fecha_desde:
+            ts_filter["$gte"] = fecha_desde.isoformat()
+        if fecha_hasta:
+            ts_filter["$lte"] = fecha_hasta.isoformat()
+        query["timestamp"] = ts_filter
+
+    if tipo_cambio:
+        query["tipo_cambio"] = tipo_cambio
+
+    entries = await audit_col.find(query).sort([("version", 1)]).to_list(None)
+    return [AuditEntry(**entry) for entry in entries]
 
 
 async def get_latest_snapshot(id_registro: str) -> Optional[dict]:
@@ -173,4 +200,25 @@ async def get_metadatos(id_registro: str) -> Optional[dict]:
     return {
         "identificacion_basica": snapshot.get("identificacion_basica", {}),
         "informacion_registro": snapshot.get("informacion_registro", {})
+    }
+
+
+async def get_auditoria_metadatos(id_registro: str) -> Optional[dict]:
+    """Return audit-level metadata: creator, dates, current version, total versions (RF-06)."""
+    audit_col = get_audit_collection()
+
+    first = await audit_col.find_one({"id_registro": id_registro}, sort=[("version", 1)])
+    last = await audit_col.find_one({"id_registro": id_registro}, sort=[("version", -1)])
+    total = await audit_col.count_documents({"id_registro": id_registro})
+
+    if not first:
+        return None
+
+    return {
+        "id_registro": id_registro,
+        "creador": first["usuario"],
+        "fecha_creacion": first["timestamp"],
+        "ultima_modificacion": last["timestamp"],
+        "version_actual": last["version"],
+        "total_versiones": total,
     }

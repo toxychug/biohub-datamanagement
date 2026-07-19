@@ -25,18 +25,17 @@ async def update_approval(action: ApprovalAction, snapshot: dict) -> AuditEntry:
 
     from services.audit_service import create_audit_entry
     from services.sensitivity_service import classify_sensitivity
-
-    # Get previous snapshot
-    previous = snapshot
+    from database.models import TipoCambioEnum
 
     # Create new audit entry with updated approval state
     audit_entry = await create_audit_entry(
         record=snapshot,
-        previous=previous,
+        previous=snapshot,
         usuario=action.director_aprobador,
         motivo=f"Aprobación: {action.comentarios or 'Sin comentarios'}",
         sensibilidad=classify_sensitivity(snapshot),
-        estado_aprobacion=action.nuevo_estado
+        estado_aprobacion=action.nuevo_estado,
+        tipo_cambio=TipoCambioEnum.CAMBIO_ESTADO,
     )
 
     return audit_entry

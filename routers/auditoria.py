@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Path, Query
 from typing import List, Optional
-from services.audit_service import get_historial, get_metadatos, get_all_records, get_all_audit_entries
+from datetime import datetime
+from services.audit_service import get_historial, get_metadatos, get_all_records, get_all_audit_entries, get_auditoria_metadatos
 from services.sensitivity_service import classify_sensitivity
-from database.models import AuditEntry, SensibilidadEnum, MetadatosResponse, SensibilidadResponse, RegistrosListResponse, AuditListResponse
+from database.models import AuditEntry, SensibilidadEnum, MetadatosResponse, SensibilidadResponse, RegistrosListResponse, AuditListResponse, AuditMetadatosResponse, TipoCambioEnum
 from cache.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/auditoria", tags=["auditoria"])
@@ -58,24 +59,36 @@ async def get_all_audit_entries_endpoint(
     },
 )
 async def get_historial_endpoint(
-    id_registro: str = Path(..., description="Identificador único del registro biológico", example="REG-001")
+    id_registro: str = Path(..., description="Identificador único del registro biológico", example="REG-001"),
+    fecha_desde: Optional[datetime] = Query(None, description="Filtrar desde esta fecha (ISO 8601)", example="2026-01-01T00:00:00"),
+    fecha_hasta: Optional[datetime] = Query(None, description="Filtrar hasta esta fecha (ISO 8601)", example="2026-12-31T23:59:59"),
+    tipo_cambio: Optional[TipoCambioEnum] = Query(None, description="Filtrar por tipo de cambio"),
 ) -> List[AuditEntry]:
-    """Retorna el rastro de auditoría completo e inmutable de un registro biológico, ordenado por versión ascendente."""
+    """Retorna el rastro de auditoría completo e inmutable de un registro biológico, ordenado por versión ascendente.
+    Soporta filtros opcionales por rango de fechas y tipo de cambio (RF-09)."""
 
-    # Try cache first
+    # Only cache unfiltered requests — filtered results are not cacheable
+    use_cache = fecha_desde is None and fecha_hasta is None and tipo_cambio is None
     cache_key = f"historial:{id_registro}"
-    cached = await cache_get(cache_key)
-    if cached is not None:
-        return cached
+
+    if use_cache:
+        cached = await cache_get(cache_key)
+        if cached is not None:
+            return cached
 
     try:
-        historial = await get_historial(id_registro)
+        historial = await get_historial(
+            id_registro,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+            tipo_cambio=tipo_cambio.value if tipo_cambio else None,
+        )
 
-        if historial is None or len(historial) == 0:
+        if not historial:
             raise HTTPException(status_code=404, detail="No audit history found")
 
-        # Cache for 60s (changes frequently)
-        await cache_set(cache_key, [entry.model_dump(mode="json") for entry in historial], ttl=60)
+        if use_cache:
+            await cache_set(cache_key, [entry.model_dump(mode="json") for entry in historial], ttl=60)
 
         return historial
     except HTTPException:
@@ -164,6 +177,40 @@ async def get_sensibilidad_endpoint(
         # Cache for 300s
         await cache_set(cache_key, result, ttl=300)
 
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{id_registro}",
+    response_model=AuditMetadatosResponse,
+    summary="Metadatos de auditoría de un registro biológico",
+    responses={
+        404: {"description": "No se encontró auditoría para el ID de registro dado"},
+        500: {"description": "Error interno del servidor"},
+    },
+)
+async def get_auditoria_metadatos_endpoint(
+    id_registro: str = Path(..., description="Identificador único del registro biológico", example="REG-001")
+) -> AuditMetadatosResponse:
+    """Retorna los metadatos de auditoría: creador, fechas de creación y última modificación,
+    versión actual y total de versiones. Cumple RF-06."""
+
+    cache_key = f"auditoria:{id_registro}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        result = await get_auditoria_metadatos(id_registro)
+
+        if result is None:
+            raise HTTPException(status_code=404, detail="No audit record found")
+
+        await cache_set(cache_key, result, ttl=120)
         return result
     except HTTPException:
         raise
