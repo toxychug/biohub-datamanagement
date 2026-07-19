@@ -163,11 +163,23 @@ class InMemoryFindCursor:
         self._executed = False
         self._sort_field = None
         self._sort_direction = 1
+        self._skip_count = 0
+        self._limit_count = None
     
     def sort(self, field, direction=1):
         """Store sort parameters; actual sorting happens on execute."""
         self._sort_field = field
         self._sort_direction = direction
+        return self
+    
+    def skip(self, count: int):
+        """Store skip count; applied on execute."""
+        self._skip_count = count
+        return self
+    
+    def limit(self, count: int):
+        """Store limit count; applied on execute."""
+        self._limit_count = count
         return self
     
     async def _execute(self):
@@ -193,6 +205,12 @@ class InMemoryFindCursor:
                     if not isinstance(doc, dict) else doc.get(self._sort_field),
                     reverse=reverse
                 )
+            
+            # Apply skip/limit after sorting, matching Motor's cursor semantics
+            if self._skip_count:
+                self._documents = self._documents[self._skip_count:]
+            if self._limit_count is not None:
+                self._documents = self._documents[:self._limit_count]
             
             self._executed = True
     
