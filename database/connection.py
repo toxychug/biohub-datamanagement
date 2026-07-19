@@ -12,9 +12,18 @@ _use_in_memory: bool = False
 async def connect_to_mongo():
     """
     Connect to MongoDB with fallback to in-memory database.
-    If MongoDB fails, the app continues with in-memory storage in development mode.
+    If MongoDB fails or URI not provided, the app continues with in-memory storage.
     """
     global _client, _db, _is_mongodb_available, _use_in_memory
+    
+    # Check if MongoDB URI is provided
+    if not settings.mongodb_uri:
+        print("[*] MongoDB URI not provided. Using in-memory database.")
+        _client = None
+        _db = None
+        _is_mongodb_available = False
+        _use_in_memory = True
+        return
     
     try:
         _client = AsyncIOMotorClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
@@ -28,16 +37,12 @@ async def connect_to_mongo():
         
     except Exception as e:
         print(f"[!] MongoDB connection failed: {e}")
-        print("[*] Falling back to in-memory database (development mode)")
+        print("[*] Falling back to in-memory database")
         
         _client = None
         _db = None
         _is_mongodb_available = False
         _use_in_memory = True
-        
-        if settings.env != "development":
-            raise RuntimeError(
-                "MongoDB connection failed and not in development mode. "
                 "Cannot use in-memory fallback in production."
             )
 

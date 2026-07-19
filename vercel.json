@@ -10,5 +10,11 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ]
+  ],
+  "env": {
+    "MONGODB_DB_NAME": "biohub_db",
+    "ENV": "production",
+    "USE_MOCK_KAFKA": "true"
+  }
 }
+

@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
-    mongodb_uri: str
+    mongodb_uri: Optional[str] = None  # Optional for serverless/fallback to in-memory
     mongodb_db_name: str = "biohub_db"
 
     kafka_bootstrap_servers: str = "localhost:9092"
