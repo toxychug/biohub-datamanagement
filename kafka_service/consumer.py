@@ -6,6 +6,9 @@ from services.audit_service import create_audit_entry
 from services.sensitivity_service import classify_sensitivity
 from database.models import AprobacionEnum
 
+_BACKOFF_INITIAL = 1
+_BACKOFF_MAX = 60
+
 
 class BiohubKafkaConsumer:
     def __init__(self):
@@ -14,39 +17,54 @@ class BiohubKafkaConsumer:
         self.task = None
 
     async def start(self):
-        """Start consuming from Kafka broker."""
+        """Launch the background consume-with-retry task (ECA-02)."""
         if settings.use_mock_kafka:
             print("[!] Mock Kafka enabled — skipping real consumer")
             return
 
-        try:
-            self.consumer = AIOKafkaConsumer(
-                settings.kafka_topic,
-                bootstrap_servers=settings.kafka_bootstrap_servers,
-                group_id="biohub-change-management",
-                auto_offset_reset="earliest",
-                value_deserializer=lambda m: json.loads(m.decode("utf-8"))
-            )
-            await self.consumer.start()
-            self.running = True
-            print(f"[✓] Kafka consumer started on topic: {settings.kafka_topic}")
+        self.running = True
+        self.task = asyncio.create_task(self._consume_with_retry())
+        print(f"[OK] Kafka consumer task started for topic: {settings.kafka_topic}")
 
-            # Start consuming in background
-            self.task = asyncio.create_task(self._consume_messages())
-        except Exception as e:
-            print(f"[!] Kafka connection failed: {e}")
+    async def _consume_with_retry(self):
+        """Reconnect with exponential backoff whenever the broker is unreachable (ECA-02)."""
+        delay = _BACKOFF_INITIAL
 
-    async def _consume_messages(self):
-        """Consume messages from Kafka topic."""
-        try:
-            async for message in self.consumer:
-                await self._process_message(message.value)
-        except Exception as e:
-            print(f"[!] Kafka consumer error: {e}")
-            self.running = False
+        while self.running:
+            try:
+                self.consumer = AIOKafkaConsumer(
+                    settings.kafka_topic,
+                    bootstrap_servers=settings.kafka_bootstrap_servers,
+                    group_id="biohub-change-management",
+                    auto_offset_reset="earliest",
+                    value_deserializer=lambda m: json.loads(m.decode("utf-8"))
+                )
+                await self.consumer.start()
+                print(f"[OK] Kafka consumer connected to {settings.kafka_bootstrap_servers}")
+                delay = _BACKOFF_INITIAL  # reset backoff on successful connection
+
+                async for message in self.consumer:
+                    await self._process_message(message.value)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"[!] Kafka error: {e}. Reconnecting in {delay}s...")
+                try:
+                    if self.consumer:
+                        await self.consumer.stop()
+                except Exception:
+                    pass
+                finally:
+                    self.consumer = None
+
+                if self.running:
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 2, _BACKOFF_MAX)
 
     async def _process_message(self, record: dict):
         """Process a single Kafka message (biological record event)."""
+        id_registro = record.get("identificacion_basica", {}).get("id_registro", "unknown")
         try:
             sensibilidad = classify_sensitivity(record)
 
@@ -60,18 +78,22 @@ class BiohubKafkaConsumer:
                 sensibilidad=sensibilidad,
                 estado_aprobacion=AprobacionEnum.PENDIENTE
             )
-            print(f"[✓] Processed record: {record.get('identificacion_basica', {}).get('id_registro', 'unknown')}")
+            print(f"[OK] Processed record: {id_registro}")
         except Exception as e:
-            print(f"[!] Error processing message: {e}")
+            print(f"[!] Error processing message {id_registro}: {e}")
 
     async def stop(self):
         """Stop consuming from Kafka."""
+        self.running = False
+        if self.task:
+            self.task.cancel()
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                pass
         if self.consumer:
-            self.running = False
-            if self.task:
-                self.task.cancel()
             await self.consumer.stop()
-            print("[✓] Kafka consumer stopped")
+        print("[OK] Kafka consumer stopped")
 
 
 _kafka_consumer: BiohubKafkaConsumer = None

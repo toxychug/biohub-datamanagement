@@ -55,6 +55,32 @@
       font-size: 14px;
     }
 
+    .header-nav {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .header-nav a {
+      text-decoration: none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .header-nav a:hover {
+      background: var(--bg);
+      color: var(--brand);
+    }
+
+    .header-nav a.active {
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+
     .header-meta {
       font-size: 12px;
       color: var(--muted);
@@ -456,6 +482,11 @@
       BioHub
       <span class="separator">/ Gestión de Registros</span>
     </div>
+    <div class="header-nav">
+      <a href="/ui" class="active">Panel</a>
+      <a href="/ui/mock-input.html">Simulador</a>
+      <a href="/docs">Documentación API</a>
+    </div>
     <span class="header-meta">Grupo 2 · Change Management &amp; Audit</span>
   </header>
 
@@ -664,6 +695,12 @@
         <div class="controls">
           <input class="search-input" type="text" placeholder="Buscar por ID o nombre científico..."
                  x-model="search">
+          <a href="/ui/mock-input.html" class="btn btn-primary" style="text-decoration: none; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Registrar
+          </a>
           <button class="btn btn-primary" @click="loadEntries()">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
               <path d="M1 6.5A5.5 5.5 0 0 1 11.5 3.5M12 6.5A5.5 5.5 0 0 1 1.5 9.5"

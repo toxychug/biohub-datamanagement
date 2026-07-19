@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioHub — Simulador Kafka Mock</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #F0F2F5;
+      --surface: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #1A202C;
+      --muted: #718096;
+      --brand: #2D8F4E;
+      --brand-light: #E8F5ED;
+      --success: #48BB78;
+      --error: #FC8181;
+      --warning: #ED8936;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .header-brand .separator {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .header-nav a {
+      text-decoration: none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .header-nav a:hover {
+      background: var(--bg);
+      color: var(--brand);
+    }
+
+    .header-nav a.active {
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* ── Form ── */
+    .form-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .form-section {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .form-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--brand);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--brand-light);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      background: white;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(45, 143, 78, 0.1);
+      background: #FAFBFC;
+    }
+
+    .form-input::placeholder {
+      color: var(--muted);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-full {
+      grid-column: 1 / -1;
+    }
+
+    /* ── Response Section ── */
+    .response-section {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .response-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--brand);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--brand-light);
+    }
+
+    .response-placeholder {
+      color: var(--muted);
+      text-align: center;
+      padding: 32px 16px;
+      font-size: 13px;
+    }
+
+    .response-box {
+      background: #F7FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .response-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .response-status.success {
+      background: #F0FDF4;
+      color: #166534;
+      border: 1px solid #DCFCE7;
+    }
+
+    .response-status.error {
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FEE2E2;
+    }
+
+    .response-status.loading {
+      background: #FFFBEB;
+      color: #92400E;
+      border: 1px solid #FEF3C7;
+    }
+
+    .status-icon {
+      font-size: 16px;
+    }
+
+    /* ── Buttons ── */
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      grid-column: 1 / -1;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: white;
+      border: none;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1e6e37;
+      box-shadow: 0 4px 12px rgba(45, 143, 78, 0.3);
+    }
+
+    .btn-primary:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--brand);
+      border: 1px solid var(--brand);
+    }
+
+    .btn-secondary:hover {
+      background: var(--brand-light);
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+
+      .form-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .page-title {
+        font-size: 20px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        padding: 0 16px;
+      }
+
+      .header-nav {
+        gap: 10px;
+      }
+    }
+
+    /* ── Utilities ── */
+    .text-muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-brand">
+      <span>🧬</span>
+      <span>BioHub</span>
+      <span class="separator">/</span>
+      <span>Mock Simulator</span>
+    </div>
+    <div class="header-nav">
+      <a href="/ui">Panel</a>
+      <a href="/ui/mock-input.html" class="active">Simulador</a>
+      <a href="/docs">Documentación API</a>
+    </div>
+    <div class="header-meta">Modo Desarrollo</div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <h1 class="page-title">🧪 Simulador Mock Kafka</h1>
+    <p class="page-subtitle">Inyecta registros biológicos en el pipeline de auditoría sin Kafka</p>
+
+    <div x-data="mockSimulator()" x-init="init()" class="form-container">
+      <!-- Left Column: Form -->
+      <div>
+        <!-- Basic Identification -->
+        <div class="form-section">
+          <div class="form-section-title">Identificación Básica</div>
+
+          <div class="form-group">
+            <label class="form-label">ID Registro *</label>
+            <input
+              type="text"
+              x-model="form.identificacion_basica.id_registro"
+              class="form-input"
+              placeholder="ej. REG-001"
+              required
+            />
+            <p class="text-muted">Identificador único del registro biológico</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombre Científico *</label>
+            <input
+              type="text"
+              x-model="form.identificacion_basica.nombre_cientifico"
+              class="form-input"
+              placeholder="ej. Panthera onca"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombre Común</label>
+            <input
+              type="text"
+              x-model="form.identificacion_basica.nombre_comun"
+              class="form-input"
+              placeholder="ej. Jaguar"
+            />
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="form-section-title" style="margin-top: 0;">Taxonomía</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Reino</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.reino"
+                class="form-input"
+                placeholder="Animalia"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Filo</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.filo"
+                class="form-input"
+                placeholder="Chordata"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Clase</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.clase"
+                class="form-input"
+                placeholder="Mammalia"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Orden</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.orden"
+                class="form-input"
+                placeholder="Carnivora"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Familia</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.familia"
+                class="form-input"
+                placeholder="Felidae"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Género</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.taxonomia.genero"
+                class="form-input"
+                placeholder="Panthera"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Especie</label>
+            <input
+              type="text"
+              x-model="form.identificacion_basica.taxonomia.especie"
+              class="form-input"
+              placeholder="P. onca"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Autoridad Taxonómica</label>
+              <input
+                type="text"
+                x-model="form.identificacion_basica.autoridad_taxonomica"
+                class="form-input"
+                placeholder="Linnaeus, 1758"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado Taxonómico</label>
+              <select x-model="form.identificacion_basica.estado_taxonomico" class="form-select">
+                <option>Aceptado</option>
+                <option>Sinónimo</option>
+                <option>No Resuelto</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: More Fields + Response -->
+      <div>
+        <!-- Geolocation & Sensitivity -->
+        <div class="form-section" style="margin-bottom: 16px;">
+          <div class="form-section-title">Geolocalización</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Latitud *</label>
+              <input
+                type="number"
+                step="0.0001"
+                x-model.number="form.geolocalizacion.latitud"
+                class="form-input"
+                placeholder="5.52"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Longitud *</label>
+              <input
+                type="number"
+                step="0.0001"
+                x-model.number="form.geolocalizacion.longitud"
+                class="form-input"
+                placeholder="-74.08"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nivel de Sensibilidad *</label>
+            <select x-model="form.geolocalizacion.nivel_sensibilidad" class="form-select" required>
+              <option value="PUBLIC">PÚBLICO (Visible públicamente)</option>
+              <option value="RESTRICTED">RESTRINGIDO (Acceso limitado)</option>
+              <option value="CONFIDENTIAL">CONFIDENCIAL (Solo para investigadores)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Registration Info -->
+        <div class="form-section" style="margin-bottom: 16px;">
+          <div class="form-section-title">Información de Registro</div>
+
+          <div class="form-group">
+            <label class="form-label">Email del Investigador *</label>
+            <input
+              type="email"
+              x-model="form.informacion_registro.investigador"
+              class="form-input"
+              placeholder="investigador@instituto.org"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Institución</label>
+            <input
+              type="text"
+              x-model="form.informacion_registro.institucion"
+              class="form-input"
+              placeholder="Universidad Nacional de Colombia"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Equipo de Expedición</label>
+            <input
+              type="text"
+              x-model="form.informacion_registro.equipo_expedicion"
+              class="form-input"
+              placeholder="Equipo Amazonia Norte"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ID de Expedición</label>
+            <input
+              type="text"
+              x-model="form.informacion_registro.id_expedicion"
+              class="form-input"
+              placeholder="EXP-2026-001"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Motivo de Cambio *</label>
+            <input
+              type="text"
+              x-model="form.trazabilidad.motivo"
+              class="form-input"
+              placeholder="ej. Registro inicial de hallazgo"
+              required
+            />
+            <p class="text-muted">¿Por qué se crea o modifica este registro?</p>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="button-group">
+          <button
+            @click="loadSampleData()"
+            class="btn btn-secondary"
+            type="button"
+          >
+            📋 Cargar Ejemplo
+          </button>
+          <button
+            @click="submitForm()"
+            :disabled="isLoading"
+            class="btn btn-primary"
+            type="button"
+          >
+            <template x-if="!isLoading">
+              <span>🚀 Registrar</span>
+            </template>
+            <template x-if="isLoading">
+              <span><div class="spinner"></div> Registrando...</span>
+            </template>
+          </button>
+        </div>
+      </div>
+
+      <!-- Response Section (Full Width) -->
+      <div class="response-section" style="grid-column: 1 / -1;">
+        <div class="response-title">Respuesta</div>
+
+        <template x-if="!response">
+          <div class="response-placeholder">
+            Completa el formulario y haz clic en "Registrar" para ver la respuesta aquí
+          </div>
+        </template>
+
+        <template x-if="response">
+          <template x-if="response.success">
+            <div>
+              <div class="response-status success">
+                <span class="status-icon">✓</span>
+                <span>Registro inyectado exitosamente en el pipeline de auditoría</span>
+              </div>
+              <div class="response-box" x-text="JSON.stringify(response.data, null, 2)"></div>
+            </div>
+          </template>
+
+          <template x-if="!response.success">
+            <div>
+              <div class="response-status error">
+                <span class="status-icon">✗</span>
+                <span x-text="response.error"></span>
+              </div>
+              <div class="response-box" x-text="JSON.stringify(response.data || response.error, null, 2)"></div>
+            </div>
+          </template>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function mockSimulator() {
+      return {
+        form: {
+          identificacion_basica: {
+            id_registro: '',
+            nombre_cientifico: '',
+            nombre_comun: '',
+            taxonomia: {
+              reino: '',
+              filo: '',
+              clase: '',
+              orden: '',
+              familia: '',
+              genero: '',
+              especie: ''
+            },
+            autoridad_taxonomica: '',
+            estado_taxonomico: 'Accepted'
+          },
+          geolocalizacion: {
+            latitud: null,
+            longitud: null,
+            nivel_sensibilidad: 'PUBLIC'
+          },
+          informacion_registro: {
+            investigador: '',
+            institucion: '',
+            equipo_expedicion: '',
+            id_expedicion: ''
+          },
+          trazabilidad: {
+            motivo: ''
+          }
+        },
+        response: null,
+        isLoading: false,
+
+        init() {
+          // Component initialized
+        },
+
+        loadSampleData() {
+          this.form = {
+            identificacion_basica: {
+              id_registro: 'REG-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+              nombre_cientifico: 'Panthera onca',
+              nombre_comun: 'Jaguar',
+              taxonomia: {
+                reino: 'Animalia',
+                filo: 'Chordata',
+                clase: 'Mammalia',
+                orden: 'Carnivora',
+                familia: 'Felidae',
+                genero: 'Panthera',
+                especie: 'P. onca'
+              },
+              autoridad_taxonomica: 'Linnaeus, 1758',
+              estado_taxonomico: 'Aceptado'
+            },
+            geolocalizacion: {
+              latitud: 5.52,
+              longitud: -74.08,
+              nivel_sensibilidad: 'RESTRICTED'
+            },
+            informacion_registro: {
+              investigador: 'test@ejemplo.com',
+              institucion: 'Universidad Nacional de Colombia',
+              equipo_expedicion: 'Equipo Amazonia Norte',
+              id_expedicion: 'EXP-2026-001'
+            },
+            trazabilidad: {
+              motivo: 'Registro inicial de hallazgo - Simulación de prueba'
+            }
+          };
+          this.response = null;
+        },
+
+        async submitForm() {
+          // Validate required fields
+          if (!this.form.identificacion_basica.id_registro) {
+            alert('El ID del Registro es obligatorio');
+            return;
+          }
+          if (!this.form.identificacion_basica.nombre_cientifico) {
+            alert('El Nombre Científico es obligatorio');
+            return;
+          }
+          if (this.form.geolocalizacion.latitud === null) {
+            alert('La Latitud es obligatoria');
+            return;
+          }
+          if (this.form.geolocalizacion.longitud === null) {
+            alert('La Longitud es obligatoria');
+            return;
+          }
+          if (!this.form.informacion_registro.investigador) {
+            alert('El Email del Investigador es obligatorio');
+            return;
+          }
+          if (!this.form.trazabilidad.motivo) {
+            alert('El Motivo de Cambio es obligatorio');
+            return;
+          }
+
+          this.isLoading = true;
+          this.response = null;
+
+          try {
+            const response = await fetch('/dev/simulate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(this.form)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              this.response = {
+                success: true,
+                data: data
+              };
+            } else {
+              this.response = {
+                success: false,
+                error: data.detail || 'Unknown error',
+                data: data
+              };
+            }
+          } catch (error) {
+            this.response = {
+              success: false,
+              error: error.message,
+              data: { error_details: error }
+            };
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from database.connection import connect_to_mongo, close_mongo
+from database.connection import connect_to_mongo, close_mongo, is_using_in_memory
+from database.db_seed import seed_sample_data
 from cache.cache import init_cache, close_cache
 from kafka_service.consumer import get_kafka_consumer
 from kafka_service.mock_producer import router as mock_producer_router
@@ -18,6 +19,10 @@ async def lifespan(app: FastAPI):
 
     await connect_to_mongo()
     await init_cache()
+
+    # Seed sample data if using in-memory database
+    if is_using_in_memory():
+        await seed_sample_data()
 
     # Start Kafka consumer
     kafka_consumer = await get_kafka_consumer()
@@ -55,13 +60,14 @@ app.mount("/ui", StaticFiles(directory="static", html=True), name="ui")
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    try:
-        from database.connection import get_database
-        db = get_database()
-        await db.command("ping")
+    from database.connection import is_mongodb_available, is_using_in_memory
+    
+    if is_using_in_memory():
+        db_status = "in-memory (MongoDB unavailable)"
+    elif is_mongodb_available():
         db_status = "connected"
-    except Exception as e:
-        db_status = f"error"
+    else:
+        db_status = "disconnected"
 
     try:
         from cache.cache import _cache_client, _use_redis
