@@ -35,16 +35,20 @@ async def connect_to_mongo():
         _use_in_memory = False
         print(f"[✓] Connected to MongoDB: {settings.mongodb_db_name}")
         
-    except Exception as e:
+   except Exception as e:
         print(f"[!] MongoDB connection failed: {e}")
-        print("[*] Falling back to in-memory database")
         
         _client = None
         _db = None
         _is_mongodb_available = False
         _use_in_memory = True
+        
+        if settings.env == "production":
+            raise RuntimeError(
                 "Cannot use in-memory fallback in production."
             )
+        
+        print("[*] Falling back to in-memory database")
 
 
 async def close_mongo():
