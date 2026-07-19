@@ -206,10 +206,10 @@ class InMemoryFindCursor:
         self._executed = False
     
     def sort(self, field, direction=1):
-    """Store sort parameters; actual sorting happens on execute."""
-    self._sort_field = field
-    self._sort_direction = direction
-    return self
+        """Store sort parameters; actual sorting happens on execute."""
+        self._sort_field = field
+        self._sort_direction = direction
+        return self
     
     async def _execute(self):
         """Execute the query."""
