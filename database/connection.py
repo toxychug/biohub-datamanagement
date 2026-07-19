@@ -106,9 +106,47 @@ def get_records_collection() -> Union[AsyncIOMotorCollection, object]:
 class InMemoryCollectionWrapper:
     """Wrapper to make in-memory database compatible with Motor collection interface."""
     
-    def __init__(self, in_memory_db, collection_name: str):
-        self.db = in_memory_db
+    def __init__(self, db, collection_name: str, filter_dict: dict, **kwargs):
+        self.db = db
         self.collection_name = collection_name
+        self.filter = filter_dict
+        self.kwargs = kwargs
+        self._documents = []
+        self._executed = False
+        self._sort_field = None
+        self._sort_direction = 1
+    
+    def sort(self, field, direction=1):
+        """Store sort parameters; actual sorting happens on execute."""
+        self._sort_field = field
+        self._sort_direction = direction
+        return self  # allow chaining, matches Motor's cursor API
+    
+    async def _execute(self):
+        """Execute the query."""
+        if not self._executed:
+            if self.collection_name == "biological_records":
+                self._documents = await self.db.get_all_records(
+                    limit=self.kwargs.get("limit", 100),
+                    skip=self.kwargs.get("skip", 0)
+                )
+            elif self.collection_name == "audit_entries":
+                all_entries = []
+                for entries in self.db.audit_entries.values():
+                    all_entries.extend(entries)
+                all_entries.sort(key=lambda x: x.timestamp, reverse=True)
+                self._documents = all_entries
+            
+            if self._sort_field is not None:
+                reverse = self._sort_direction == -1
+                self._documents = sorted(
+                    self._documents,
+                    key=lambda doc: getattr(doc, self._sort_field, None)
+                    if not isinstance(doc, dict) else doc.get(self._sort_field),
+                    reverse=reverse
+                )
+            
+            self._executed = True
     
     async def insert_one(self, document):
         """Insert a document."""
@@ -166,6 +204,12 @@ class InMemoryFindCursor:
         self.kwargs = kwargs
         self._documents = []
         self._executed = False
+    
+    def sort(self, field, direction=1):
+    """Store sort parameters; actual sorting happens on execute."""
+    self._sort_field = field
+    self._sort_direction = direction
+    return self
     
     async def _execute(self):
         """Execute the query."""
