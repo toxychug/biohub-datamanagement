@@ -35,7 +35,7 @@ async def connect_to_mongo():
         _use_in_memory = False
         print(f"[✓] Connected to MongoDB: {settings.mongodb_db_name}")
         
-   except Exception as e:
+    except Exception as e:
         print(f"[!] MongoDB connection failed: {e}")
         
         _client = None
