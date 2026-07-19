@@ -117,7 +117,7 @@ class InMemoryCollectionWrapper:
         elif self.collection_name == "biological_records":
             return await self.db.insert_or_update_record(document)
     
-    async def find(self, filter_dict, **kwargs):
+    def find(self, filter_dict, **kwargs):
         """Find documents (simplified for in-memory)."""
         return InMemoryFindCursor(self.db, self.collection_name, filter_dict, **kwargs)
     
