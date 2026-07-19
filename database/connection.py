@@ -106,6 +106,54 @@ def get_records_collection() -> Union[AsyncIOMotorCollection, object]:
 class InMemoryCollectionWrapper:
     """Wrapper to make in-memory database compatible with Motor collection interface."""
     
+    def __init__(self, db, collection_name: str):
+        self.db = db
+        self.collection_name = collection_name
+    
+    async def insert_one(self, document):
+        if self.collection_name == "audit_entries":
+            return await self.db.insert_audit_entry(document)
+        elif self.collection_name == "biological_records":
+            return await self.db.insert_or_update_record(document)
+    
+    def find(self, filter_dict, **kwargs):
+        """Find documents (simplified for in-memory)."""
+        return InMemoryFindCursor(self.db, self.collection_name, filter_dict, **kwargs)
+    
+    async def find_one(self, filter_dict):
+        if self.collection_name == "audit_entries":
+            id_registro = filter_dict.get("id_registro")
+            if id_registro:
+                entries = await self.db.get_audit_history(id_registro, limit=1)
+                return entries[0] if entries else None
+        elif self.collection_name == "biological_records":
+            id_registro = filter_dict.get("id_registro")
+            if id_registro:
+                return await self.db.get_record_snapshot(id_registro)
+        return None
+    
+    async def update_one(self, filter_dict, update_dict):
+        if self.collection_name == "biological_records":
+            id_registro = filter_dict.get("id_registro")
+            if id_registro and "$set" in update_dict:
+                record = await self.db.get_record_snapshot(id_registro)
+                if record:
+                    for key, value in update_dict["$set"].items():
+                        setattr(record, key, value)
+                    return {"modifiedCount": 1}
+        return {"modifiedCount": 0}
+    
+    async def count_documents(self, filter_dict=None):
+        if self.collection_name == "biological_records":
+            return await self.db.count_records()
+        elif self.collection_name == "audit_entries":
+            return len(self.db.audit_entries)
+        return 0
+
+
+class InMemoryFindCursor:
+    """Cursor for in-memory find operations."""
+    
     def __init__(self, db, collection_name: str, filter_dict: dict, **kwargs):
         self.db = db
         self.collection_name = collection_name
@@ -120,7 +168,7 @@ class InMemoryCollectionWrapper:
         """Store sort parameters; actual sorting happens on execute."""
         self._sort_field = field
         self._sort_direction = direction
-        return self  # allow chaining, matches Motor's cursor API
+        return self
     
     async def _execute(self):
         """Execute the query."""
@@ -148,94 +196,16 @@ class InMemoryCollectionWrapper:
             
             self._executed = True
     
-    async def insert_one(self, document):
-        """Insert a document."""
-        if self.collection_name == "audit_entries":
-            return await self.db.insert_audit_entry(document)
-        elif self.collection_name == "biological_records":
-            return await self.db.insert_or_update_record(document)
-    
-    def find(self, filter_dict, **kwargs):
-        """Find documents (simplified for in-memory)."""
-        return InMemoryFindCursor(self.db, self.collection_name, filter_dict, **kwargs)
-    
-    async def find_one(self, filter_dict):
-        """Find a single document."""
-        if self.collection_name == "audit_entries":
-            id_registro = filter_dict.get("id_registro")
-            if id_registro:
-                entries = await self.db.get_audit_history(id_registro, limit=1)
-                return entries[0] if entries else None
-        elif self.collection_name == "biological_records":
-            id_registro = filter_dict.get("id_registro")
-            if id_registro:
-                return await self.db.get_record_snapshot(id_registro)
-        return None
-    
-    async def update_one(self, filter_dict, update_dict):
-        """Update a document (simplified)."""
-        if self.collection_name == "biological_records":
-            id_registro = filter_dict.get("id_registro")
-            if id_registro and "$set" in update_dict:
-                record = await self.db.get_record_snapshot(id_registro)
-                if record:
-                    # Update the record
-                    for key, value in update_dict["$set"].items():
-                        setattr(record, key, value)
-                    return {"modifiedCount": 1}
-        return {"modifiedCount": 0}
-    
-    async def count_documents(self, filter_dict=None):
-        """Count documents."""
-        if self.collection_name == "biological_records":
-            return await self.db.count_records()
-        elif self.collection_name == "audit_entries":
-            return len(self.db.audit_entries)
-        return 0
-
-
-class InMemoryFindCursor:
-    """Cursor for in-memory find operations."""
-    
-    def __init__(self, db, collection_name: str, filter_dict: dict, **kwargs):
-        self.db = db
-        self.collection_name = collection_name
-        self.filter = filter_dict
-        self.kwargs = kwargs
-        self._documents = []
-        self._executed = False
-    
-    async def _execute(self):
-        """Execute the query."""
-        if not self._executed:
-            if self.collection_name == "biological_records":
-                self._documents = await self.db.get_all_records(
-                    limit=self.kwargs.get("limit", 100),
-                    skip=self.kwargs.get("skip", 0)
-                )
-            elif self.collection_name == "audit_entries":
-                # Get all audit entries across all records
-                all_entries = []
-                for entries in self.db.audit_entries.values():
-                    all_entries.extend(entries)
-                # Sort by timestamp descending
-                all_entries.sort(key=lambda x: x.timestamp, reverse=True)
-                self._documents = all_entries
-            self._executed = True
-    
     async def to_list(self, length=None):
-        """Get all documents as list."""
         await self._execute()
         if length:
             return self._documents[:length]
         return self._documents
     
     def __aiter__(self):
-        """Async iterator support."""
         return self
     
     async def __anext__(self):
-        """Get next document."""
         await self._execute()
         if not hasattr(self, '_index'):
             self._index = 0
